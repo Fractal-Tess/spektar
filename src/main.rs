@@ -1,21 +1,13 @@
 use cpal::{
     traits::{DeviceTrait, HostTrait, StreamTrait},
-    SampleFormat,
+    SampleFormat, Stream, StreamConfig,
 };
 use eframe::{egui, NativeOptions};
 use egui::{Color32, Ui};
+use spectrum_analyzer::{samples_fft_to_spectrum, FrequencyLimit};
 use std::{
     collections::VecDeque,
     sync::{Arc, Mutex},
-};
-
-use audioviz::{
-    io::{Device, Input},
-    spectrum::{
-        config::{Interpolation, ProcessorConfig, StreamConfig},
-        stream::Stream,
-        Frequency,
-    },
 };
 
 const HISTORY_SIZE: usize = 50;
@@ -24,7 +16,7 @@ const NUM_BANDS: usize = 40;
 struct SpectrumApp {
     spectrum_data: Arc<Mutex<VecDeque<Vec<f32>>>>,
     audio_stream: Option<Stream>,
-    audio_receiver: Option<audioviz::io::Receiver>,
+    sample_buffer: Arc<Mutex<Vec<f32>>>,
 }
 
 impl Default for SpectrumApp {
@@ -32,29 +24,41 @@ impl Default for SpectrumApp {
         Self {
             spectrum_data: Arc::new(Mutex::new(VecDeque::with_capacity(HISTORY_SIZE))),
             audio_stream: None,
-            audio_receiver: None,
+            sample_buffer: Arc::new(Mutex::new(Vec::new())),
         }
     }
 }
 
 impl eframe::App for SpectrumApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Update audio data
-        if let Some(receiver) = &self.audio_receiver {
-            if let Some(new_data) = receiver.pull_data() {
-                if let Some(stream) = &mut self.audio_stream {
-                    stream.push_data(new_data);
-                    stream.update();
+        // Process audio data if available
+        if let Ok(mut buffer) = self.sample_buffer.try_lock() {
+            if buffer.len() >= 1024 {
+                // Take samples for FFT
+                let samples: Vec<f32> = buffer.drain(0..1024).collect();
+                
+                // Convert to complex numbers for FFT
+                let hann_window = spectrum_analyzer::windows::hann_window(&samples);
+                let spectrum_result = samples_fft_to_spectrum(
+                    &hann_window,
+                    44100,
+                    FrequencyLimit::Range(20.0, 20000.0),
+                    None,
+                );
 
+                if let Ok(spectrum) = spectrum_result {
+                    // Convert spectrum to bands - first convert OrderableF32 to f32
+                    let spectrum_data: Vec<(f32, f32)> = spectrum
+                        .data()
+                        .iter()
+                        .map(|(freq, val)| (freq.val(), val.val()))
+                        .collect();
+                    let bands = convert_spectrum_to_bands(&spectrum_data, NUM_BANDS);
+                    
                     if let Ok(mut spectrum_data) = self.spectrum_data.lock() {
-                        let frequencies = stream.get_frequencies();
-                        if !frequencies.is_empty() {
-                            // Convert frequencies to our band format
-                            let bands = convert_frequencies_to_bands(&frequencies[0], NUM_BANDS);
-                            spectrum_data.push_back(bands);
-                            if spectrum_data.len() > HISTORY_SIZE {
-                                spectrum_data.pop_front();
-                            }
+                        spectrum_data.push_back(bands);
+                        if spectrum_data.len() > HISTORY_SIZE {
+                            spectrum_data.pop_front();
                         }
                     }
                 }
@@ -65,8 +69,9 @@ impl eframe::App for SpectrumApp {
             ui.heading("Spektar - Audio Spectrum Visualizer");
 
             // Draw the spectrum visualization
-            let spectrum_data = self.spectrum_data.lock().unwrap();
-            self.draw_spectrum(ui, &spectrum_data);
+            if let Ok(spectrum_data) = self.spectrum_data.lock() {
+                self.draw_spectrum(ui, &spectrum_data);
+            }
         });
 
         // Request continuous repainting
@@ -76,37 +81,77 @@ impl eframe::App for SpectrumApp {
 
 impl SpectrumApp {
     fn init_audio(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut audio_input = Input::new();
+        let host = cpal::default_host();
+        
+        // Get the default input device
+        let device = host
+            .default_input_device()
+            .ok_or("No input device available")?;
 
-        // Get the default output device
-        let devices = audio_input.fetch_devices()?;
-        println!("Available audio devices:");
-        for (id, device) in devices.iter().enumerate() {
-            println!("{id}\t{device}");
-        }
+        println!("Using input device: {}", device.name()?);
 
-        // Initialize audio input with default device
-        let (channel_count, _sampling_rate, audio_receiver) =
-            audio_input.init(&Device::Default, Some(1024))?;
+        // Get the default input config
+        let config = device.default_input_config()?;
+        println!("Default input config: {:?}", config);
 
-        let stream_config = StreamConfig {
-            channel_count,
-            gravity: Some(2.0),
-            fft_resolution: 1024 * 3,
-            processor: ProcessorConfig {
-                frequency_bounds: [20, 20_000],
-                interpolation: Interpolation::Cubic,
-                volume: 0.4,
-                resolution: Some(NUM_BANDS),
-                ..ProcessorConfig::default()
-            },
-            ..StreamConfig::default()
+        let sample_format = config.sample_format();
+        let config: StreamConfig = config.into();
+        
+        let sample_buffer = Arc::clone(&self.sample_buffer);
+        
+        let stream = match sample_format {
+            SampleFormat::F32 => device.build_input_stream(
+                &config,
+                move |data: &[f32], _: &cpal::InputCallbackInfo| {
+                    if let Ok(mut buffer) = sample_buffer.lock() {
+                        buffer.extend_from_slice(data);
+                        // Keep buffer size reasonable
+                        if buffer.len() > 4096 {
+                            let excess = buffer.len() - 4096;
+                            buffer.drain(0..excess);
+                        }
+                    }
+                },
+                |err| eprintln!("Audio stream error: {}", err),
+                None,
+            )?,
+            SampleFormat::I16 => device.build_input_stream(
+                &config,
+                move |data: &[i16], _: &cpal::InputCallbackInfo| {
+                    if let Ok(mut buffer) = sample_buffer.lock() {
+                        let float_data: Vec<f32> = data.iter().map(|&x| x as f32 / i16::MAX as f32).collect();
+                        buffer.extend_from_slice(&float_data);
+                        // Keep buffer size reasonable
+                        if buffer.len() > 4096 {
+                            let excess = buffer.len() - 4096;
+                            buffer.drain(0..excess);
+                        }
+                    }
+                },
+                |err| eprintln!("Audio stream error: {}", err),
+                None,
+            )?,
+            SampleFormat::U16 => device.build_input_stream(
+                &config,
+                move |data: &[u16], _: &cpal::InputCallbackInfo| {
+                    if let Ok(mut buffer) = sample_buffer.lock() {
+                        let float_data: Vec<f32> = data.iter().map(|&x| (x as f32 / u16::MAX as f32) * 2.0 - 1.0).collect();
+                        buffer.extend_from_slice(&float_data);
+                        // Keep buffer size reasonable
+                        if buffer.len() > 4096 {
+                            let excess = buffer.len() - 4096;
+                            buffer.drain(0..excess);
+                        }
+                    }
+                },
+                |err| eprintln!("Audio stream error: {}", err),
+                None,
+            )?,
+            _ => return Err("Unsupported sample format".into()),
         };
 
-        let stream = Stream::new(stream_config);
-
+        stream.play()?;
         self.audio_stream = Some(stream);
-        self.audio_receiver = Some(audio_receiver);
 
         Ok(())
     }
@@ -185,24 +230,24 @@ impl SpectrumApp {
     }
 }
 
-fn convert_frequencies_to_bands(frequencies: &[Frequency], num_bands: usize) -> Vec<f32> {
+fn convert_spectrum_to_bands(spectrum: &[(f32, f32)], num_bands: usize) -> Vec<f32> {
     let mut bands = vec![0.0; num_bands];
-    let freq_len = frequencies.len();
+    let spectrum_len = spectrum.len();
 
-    if freq_len == 0 {
+    if spectrum_len == 0 {
         return bands;
     }
 
-    // Map the frequencies to our bands using a logarithmic scale
+    // Map the spectrum to our bands using a logarithmic scale
     for (i, band) in bands.iter_mut().enumerate() {
-        let start_idx = ((i as f32 / num_bands as f32).powf(2.0) * freq_len as f32) as usize;
-        let end_idx = (((i + 1) as f32 / num_bands as f32).powf(2.0) * freq_len as f32) as usize;
-        let end_idx = end_idx.min(freq_len);
+        let start_idx = ((i as f32 / num_bands as f32).powf(2.0) * spectrum_len as f32) as usize;
+        let end_idx = (((i + 1) as f32 / num_bands as f32).powf(2.0) * spectrum_len as f32) as usize;
+        let end_idx = end_idx.min(spectrum_len);
 
         if start_idx < end_idx {
-            let sum: f32 = frequencies[start_idx..end_idx]
+            let sum: f32 = spectrum[start_idx..end_idx]
                 .iter()
-                .map(|f| f.volume)
+                .map(|f| f.1)
                 .sum();
             *band = (sum / (end_idx - start_idx) as f32).clamp(0.0, 1.0);
         }
