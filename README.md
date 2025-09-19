@@ -2,6 +2,8 @@
 
 A Rust-based audio spectrum visualizer that displays real-time frequency analysis of the system's audio input.
 
+> ** Currently not working due to wayland sink issues:
+
 ## Features
 
 - Real-time audio spectrum visualization
