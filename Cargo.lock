@@ -2609,12 +2609,33 @@ dependencies = [
 name = "spektar"
 version = "0.1.0"
 dependencies = [
+ "spektar-ui",
+]
+
+[[package]]
+name = "spektar-audio"
+version = "0.1.0"
+dependencies = [
  "anyhow",
- "eframe",
- "egui",
  "libpulse-binding",
  "libpulse-simple-binding",
+]
+
+[[package]]
+name = "spektar-spectrum"
+version = "0.1.0"
+dependencies = [
  "spectrum-analyzer",
+]
+
+[[package]]
+name = "spektar-ui"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "spektar-audio",
+ "spektar-spectrum",
 ]
 
 [[package]]

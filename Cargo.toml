@@ -3,12 +3,15 @@ name = "spektar"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = [
+    ".",
+    "crates/spektar-audio",
+    "crates/spektar-spectrum",
+    "crates/spektar-ui",
+]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.96"
-eframe = "0.31.0"
-egui = "0.31.0"
-spectrum-analyzer = "1.6.0"
-pulse = { version = "2.28.3", package = "libpulse-binding" }
-psimple = { version = "2.28.1", package = "libpulse-simple-binding" }
+spektar-ui = { path = "crates/spektar-ui" }
