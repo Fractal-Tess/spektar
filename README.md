@@ -8,10 +8,6 @@ Spektar is a small learning project inspired by [Cava](https://github.com/karlst
 
 The goal was simple: learn how to capture system audio in Rust, turn it into bars, and build a desktop visualizer around it.
 
-## Screenshot
-
-![Spektar screenshot](assets/screenshot.png)
-
 ## What it does
 
 - listens to the default audio output on Linux
