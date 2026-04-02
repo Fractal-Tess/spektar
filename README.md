@@ -1,7 +1,7 @@
 # Spektar
 
 <p align="center">
-  <img src="assets/logo.svg" alt="Spektar logo" width="180" />
+  <img src="assets/logo.png" alt="Spektar logo" width="180" />
 </p>
 
 Spektar is a small learning project inspired by [Cava](https://github.com/karlstav/cava).
@@ -10,7 +10,7 @@ The goal was simple: learn how to capture system audio in Rust, turn it into bar
 
 ## Screenshot
 
-![Spektar screenshot](screenshot.png)
+![Spektar screenshot](assets/screenshot.png)
 
 ## What it does
 
