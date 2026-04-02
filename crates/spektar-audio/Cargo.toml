@@ -1,0 +1,9 @@
+[package]
+name = "spektar-audio"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.96"
+pulse = { version = "2.28.3", package = "libpulse-binding" }
+psimple = { version = "2.28.1", package = "libpulse-simple-binding" }
