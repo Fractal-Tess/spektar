@@ -1,65 +1,47 @@
 # Spektar
 
-A Rust-based audio spectrum visualizer that displays real-time frequency analysis of the system's audio input.
+<p align="center">
+  <img src="assets/logo.svg" alt="Spektar logo" width="180" />
+</p>
 
-> ** Currently not working due to wayland sink issues:
+Spektar is a small learning project inspired by [Cava](https://github.com/karlstav/cava).
 
-## Features
+The goal was simple: learn how to capture system audio in Rust, turn it into bars, and build a desktop visualizer around it.
 
-- Real-time audio spectrum visualization
-- Vertical bar graph representation of audio frequencies
-- Color gradients representing intensity levels
-- Historical visualization with fading effect
-- Logarithmic frequency bands for better audio perception
+## Screenshot
 
-## Requirements
+![Spektar screenshot](screenshot.png)
 
-- Rust (1.77.0 or newer)
-- Linux system with ALSA/PulseAudio
-- OpenGL support
+## What it does
 
-## Setup with Nix/Direnv
+- listens to the default audio output on Linux
+- turns that audio into a bar visualizer
+- lets you tweak the feel with presets, lerp, FPS, and update-rate controls
 
-This project uses Nix flakes and direnv for reproducible development environments:
+## A few simple ideas used in the app
 
-1. Ensure you have Nix with flakes enabled and direnv installed
-2. Run `direnv allow` in the project directory
-3. The development environment will be automatically loaded
+- **FFT / spectrum analysis**: converts audio samples into frequency energy
+- **log-style band mapping**: groups frequencies into bars in a way that feels more natural for music
+- **autosensitivity**: adjusts the bar scale so everything is not always too small or too clipped
+- **smoothing / lerp**: blends old and new values so the bars move more nicely
 
-## Manual Setup
+## Inspired by Cava
 
-If not using Nix:
+This project borrows ideas from Cava's capture and visualization approach, but it is still just a learning-oriented Rust version.
 
-1. Install system dependencies:
-   - ALSA development libraries
-   - PulseAudio development libraries
-   - X11 and OpenGL libraries
+The Cava source is vendored in `vendor/cava/` as a reference.
 
-2. Build and run the project:
-   ```
-   cargo build --release
-   cargo run --release
-   ```
+## Running it
 
-## Usage
+If you use Nix/direnv:
 
-1. Run the application:
-   ```
-   cargo run --release
-   ```
+```bash
+direnv allow
+cargo run
+```
 
-2. The application will automatically connect to your default audio input device and start visualizing the audio spectrum.
-
-3. Make some noise or play audio to see the visualization respond.
+Otherwise, make sure you have Rust, PulseAudio or PipeWire Pulse compatibility, and the Linux windowing libraries needed by `eframe`.
 
 ## License
 
 MIT
-
-## Credits
-
-Built with:
-- cpal - Cross-platform audio library
-- spectrum-analyzer - Audio frequency analysis
-- egui/eframe - GUI framework
-- ring_buffer - Efficient circular buffer implementation
