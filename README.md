@@ -27,20 +27,28 @@ The goal was simple: learn how to capture system audio in Rust, turn it into bar
 
 ## Inspired by Cava
 
-This project borrows ideas from Cava's capture and visualization approach, but it is still just a learning-oriented Rust version.
-
-The Cava source is vendored in `vendor/cava/` as a reference.
+This project is inspired by [Cava](https://github.com/karlstav/cava)'s approach to audio visualization, but is built from scratch in Rust using egui for the UI and libpulse for audio capture.
 
 ## Running it
 
-If you use Nix/direnv:
+### Requirements
+
+- Rust (1.70+)
+- PulseAudio or PipeWire with Pulse compatibility
+- Linux windowing libraries (xcb, fontconfig, etc.)
+
+### With Nix/direnv
 
 ```bash
 direnv allow
 cargo run
 ```
 
-Otherwise, make sure you have Rust, PulseAudio or PipeWire Pulse compatibility, and the Linux windowing libraries needed by `eframe`.
+### Without Nix
+
+```bash
+cargo run
+```
 
 ## License
 
