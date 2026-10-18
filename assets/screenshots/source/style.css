@@ -1,0 +1,13 @@
+html,body{margin:0;overflow:hidden}
+body{position:relative;width:1600px;height:1000px;font-family:Inter,"Ubuntu",system-ui,sans-serif;
+  background:
+    radial-gradient(900px 640px at 82% -8%, rgba(139,92,246,.36), transparent 70%),
+    #0b0816}
+body::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.4px);background-size:22px 22px;mask-image:linear-gradient(180deg,#000,rgba(0,0,0,.25))}
+.win{position:absolute;border-radius:14px;overflow:hidden;background:#000;box-shadow:0 40px 90px -20px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.10)}
+.bar{height:34px;display:flex;align-items:center;gap:7px;padding:0 14px;background:#17141f;border-bottom:1px solid #26222f;color:#8f88a3;font:500 13px/1 ui-monospace,"JetBrains Mono",SFMono-Regular,Menlo,monospace}
+.bar i{width:11px;height:11px;border-radius:50%;background:#3a3446;display:block}
+.bar span{margin-left:12px}
+.win img{display:block;width:100%}
+.kicker{position:absolute;left:90px;top:44px;color:#b4a3ff;font:700 15px/1 ui-monospace,"JetBrains Mono",monospace;letter-spacing:.28em;text-transform:uppercase}
+.title{position:absolute;left:90px;top:70px;margin:0;color:#f4f2fa;font-weight:700;font-size:40px;letter-spacing:-.01em}

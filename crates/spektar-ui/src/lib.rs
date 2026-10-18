@@ -235,14 +235,14 @@ impl eframe::App for SpectrumApp {
                 let available = ui.available_rect_before_wrap();
                 let visualizer_rect = Rect::from_min_max(
                     available.min,
-                    Pos2::new(available.max.x, available.max.y - 118.0),
+                    Pos2::new(available.max.x, available.max.y - 146.0),
                 );
 
                 self.draw_visualizer(ui, visualizer_rect);
 
                 ui.scope_builder(
                     egui::UiBuilder::new().max_rect(Rect::from_min_max(
-                        Pos2::new(available.left(), available.bottom() - 102.0),
+                        Pos2::new(available.left(), available.bottom() - 130.0),
                         available.max,
                     )),
                     |ui| {
